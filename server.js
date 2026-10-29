@@ -9,10 +9,10 @@ app.use(express.static('public'));
 
 // DATABASE PENGGUNA (Tambahkan domainId jika Anda tahu ID-nya dari Adsterra, biarkan null jika ingin auto-detect)
 const usersDB = {
-    "admin_ch7": { password: "ch7123", domain: "ch7news-update.blogspot.com", domainId:1896921 },
-    "admin_hese": { password: "hese123", domain: "heseasupan.blogspot.com", domainId:2871927 },
+    "admin_ch7": { password: "ch7333", domain: "ch7news-update.blogspot.com", domainId:1896921 },
+    "admin_hese": { password: "hese222", domain: "heseasupan.blogspot.com", domainId:2871927 },
     "admin_mgr": { password: "mgr123", domain: "mgronlinelive.blogspot.com", domainId:1885291 },
-    "admin_sprite": { password: "sprite123", domain: "spritebababi.blogspot.com", domainId:1909856 }
+    "admin_sprite": { password: "sprite444", domain: "spritebababi.blogspot.com", domainId:1909856 }
 };
 
 // ISIKAN TOKEN API ADSTERRA ANDA DI SINI
