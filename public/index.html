@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Domain Statistik Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f5f7; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; }
+        .login-box { max-width: 300px; margin: 100px auto; text-align: center; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;}
+        button { padding: 10px 15px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        
+        /* Area Filter Tanggal */
+        .filter-container { display: flex; align-items: center; gap: 15px; background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #eee; }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-group label { font-size: 14px; font-weight: bold; color: #555; }
+        .filter-group input[type="date"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .hidden { display: none; }
+        .logout-btn { background: #dc3545; float: right; padding: 8px 15px; }
+    </style>
+</head>
+<body>
+
+    <!-- HALAMAN LOGIN -->
+    <div id="loginSection" class="login-box">
+        <h2>Login Partner</h2>
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button style="width: 100%; margin-top: 10px;" onclick="login()">Masuk</button>
+        <p id="errorMsg" style="color:red; display:none;">Login Gagal</p>
+    </div>
+
+    <!-- HALAMAN DASHBOARD -->
+    <div id="dashboardSection" class="container hidden">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <h2>Statistik Domain: <span id="domainName"></span></h2>
+
+        <!-- FILTER TANGGAL -->
+        <div class="filter-container">
+            <div class="filter-group">
+                <label>Dari:</label>
+                <input type="date" id="startDate">
+            </div>
+            <div class="filter-group">
+                <label>Sampai:</label>
+                <input type="date" id="endDate">
+            </div>
+            <button onclick="fetchStats()">Tampilkan</button>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Impressions</th>
+                    <th>Clicks</th>
+                    <th>CTR</th>
+                    <th>CPM</th>
+                    <th>Revenue</th>
+                </tr>
+            </thead>
+            <tbody id="statsBody">
+                <!-- Data dimasukkan via JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Tanggal default: Hari Ini
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').value = todayStr;
+        document.getElementById('endDate').value = todayStr;
+
+        if(localStorage.getItem('token')) {
+            showDashboard();
+            fetchStats();
+        }
+
+        async function login() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('domain', data.domain);
+                showDashboard();
+                fetchStats();
+            } else {
+                document.getElementById('errorMsg').style.display = 'block';
+            }
+        }
+
+        function showDashboard() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('domainName').innerText = localStorage.getItem('domain');
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        async function fetchStats() {
+            const token = localStorage.getItem('token');
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            const tbody = document.getElementById('statsBody');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Memuat data...</td></tr>';
+
+            try {
+                // Mengirim parameter tanggal via Query String
+                const res = await fetch(`/api/stats?start_date=${start}&finish_date=${end}`, {
+                    headers: { 'Authorization': token }
+                });
+                const stats = await res.json();
+
+                tbody.innerHTML = '';
+
+                if (stats.error) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:red;">Error: ${stats.error}</td></tr>`;
+                    return;
+                }
+
+                if (!Array.isArray(stats) || stats.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Belum ada data pada tanggal ini</td></tr>';
+                    return;
+                }
+
+                stats.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.domain || '-'}</td>
+                            <td>${item.impressions || 0}</td>
+                            <td>${item.clicks || 0}</td>
+                            <td>${typeof item.ctr === 'number' ? item.ctr + '%' : item.ctr}</td>
+                            <td>$${item.cpm || '0.00'}</td>
+                            <td>$${item.revenue || '0.00'}</td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Gagal terhubung ke server</td></tr>';
+            }
+        }
+    </script>
+</body>
+</html>
